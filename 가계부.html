@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家計簿</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f3f3f3;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .section-title {
+            margin-top: 20px;
+            color: #555;
+            font-size: 1.2em;
+        }
+        input, button, select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .fixed-expense {
+            background-color: #d9f7be;
+        }
+        .variable-expense {
+            background-color: #ffd6e7;
+        }
+        #total {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>家計簿</h1>
+        <form id="expense-form">
+            <input type="text" id="item" placeholder="項目 (例: 家賃, 食費)" required>
+            <input type="number" id="amount" placeholder="金額 (円)" required>
+            <select id="category">
+                <option value="固定費">固定費</option>
+                <option value="実費">実費</option>
+            </select>
+            <input type="date" id="date" required>
+            <button type="submit">追加</button>
+        </form>
+        <div class="section-title">一覧</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>項目</th>
+                    <th>金額</th>
+                    <th>カテゴリ</th>
+                    <th>日付</th>
+                    <th>削除</th>
+                </tr>
+            </thead>
+            <tbody id="expense-table"></tbody>
+        </table>
+        <div id="total">総合計: 0円</div>
+        <div class="section-title">日付別表示</div>
+        <input type="month" id="filter-month">
+        <button onclick="filterByMonth()">表示</button>
+    </div>
+
+    <script>
+        const form = document.getElementById('expense-form');
+        const tableBody = document.getElementById('expense-table');
+        const totalElement = document.getElementById('total');
+        const filterMonth = document.getElementById('filter-month');
+        let total = 0;
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+
+        // 初期データロード
+        document.addEventListener('DOMContentLoaded', function () {
+            expenses.forEach(addExpenseToTable);
+            updateTotal();
+        });
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const item = document.getElementById('item').value;
+            const amount = parseInt(document.getElementById('amount').value);
+            const category = document.getElementById('category').value;
+            const date = document.getElementById('date').value;
+
+            if (isNaN(amount) || amount <= 0) {
+                alert("金額を正しく入力してください！");
+                return;
+            }
+
+            const expense = { item, amount, category, date };
+            expenses.push(expense);
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+
+            addExpenseToTable(expense);
+            total += amount;
+            updateTotal();
+            form.reset();
+        });
+
+        function addExpenseToTable(expense) {
+            const row = document.createElement('tr');
+            row.className = expense.category === "固定費" ? "fixed-expense" : "variable-expense";
+            row.innerHTML = `
+                <td>${expense.item}</td>
+                <td>${expense.amount}円</td>
+                <td>${expense.category}</td>
+                <td>${expense.date}</td>
+                <td><button onclick="deleteExpense(this, ${expense.amount}, '${expense.date}')">削除</button></td>
+            `;
+            tableBody.appendChild(row);
+        }
+
+        function deleteExpense(button, amount, date) {
+            const row = button.parentElement.parentElement;
+            tableBody.removeChild(row);
+            expenses = expenses.filter(e => e.date !== date || e.amount !== amount);
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+            total -= amount;
+            updateTotal();
+        }
+
+        function updateTotal() {
+            total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+            totalElement.textContent = `総合計: ${total}円`;
+        }
+
+        function filterByMonth() {
+            const month = filterMonth.value;
+            tableBody.innerHTML = '';
+
+            expenses
+                .filter(expense => expense.date.startsWith(month))
+                .forEach(addExpenseToTable);
+        }
+    </script>
+</body>
+</html>
